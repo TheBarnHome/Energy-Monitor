@@ -6,6 +6,24 @@ until the next solar takeover window and recommending when to run flexible loads
 This first version is recommendation-only. It does not directly control EV
 chargers, spa heating, or appliances.
 
+## Installation
+
+### HACS
+
+1. In HACS, open the menu and choose **Custom repositories**.
+2. Add `https://github.com/TheBarnHome/Energy-Monitor` as repository type
+   **Integration**.
+3. Install **Energy Monitor** from HACS.
+4. Restart Home Assistant.
+5. Go to **Settings > Devices & services > Add integration** and search for
+   **Energy Monitor**.
+
+### Manual
+
+Copy `custom_components/energy_monitor` into your Home Assistant
+`custom_components` directory, restart Home Assistant, then add the integration
+from **Settings > Devices & services**.
+
 ## Features
 
 - Battery SoC forecast at 30 minute resolution.
@@ -86,5 +104,5 @@ directly.
 Run the pure Python forecast tests:
 
 ```bash
-python3 -m unittest
+python3 -m unittest discover -s tests
 ```
