@@ -1,0 +1,19 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Energy Monitor",
+        "description": "Configure battery forecast inputs.",
+        "data": {
+          "battery_soc_entity": "Battery SoC entity",
+          "battery_capacity_kwh": "Battery capacity (kWh)",
+          "solar_forecast_entity": "Solar forecast entity",
+          "home_consumption_entity": "Home consumption entity",
+          "grid_import_entity": "Grid import entity",
+          "enable_grid_export": "Enable grid export",
+          "grid_export_entity": "Grid export entity"
+        }
+      }
+    }
+  }
+}

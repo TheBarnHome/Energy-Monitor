@@ -1,0 +1,8 @@
+recalculate:
+  fields:
+    entry_id:
+      selector:
+        text:
+      required: false
+      name: Entry ID
+      description: Optional Energy Monitor config entry to refresh.

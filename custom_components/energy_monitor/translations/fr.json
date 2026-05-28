@@ -1,0 +1,19 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Energy Monitor",
+        "description": "Configure les sources de prevision batterie.",
+        "data": {
+          "battery_soc_entity": "Entite SoC batterie",
+          "battery_capacity_kwh": "Capacite batterie (kWh)",
+          "solar_forecast_entity": "Entite de prevision solaire",
+          "home_consumption_entity": "Entite de consommation maison",
+          "grid_import_entity": "Entite d'import reseau",
+          "enable_grid_export": "Activer l'export reseau",
+          "grid_export_entity": "Entite d'export reseau"
+        }
+      }
+    }
+  }
+}
