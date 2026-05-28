@@ -42,6 +42,7 @@ from .loads import (
     load_profiles_from_subentries,
     merge_load_profiles,
 )
+from .parsing import coerce_float
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -79,7 +80,20 @@ class EnergyMonitorCoordinator(DataUpdateCoordinator[EnergyMonitorData]):
         try:
             current_soc = _state_float(self.hass, actual_soc_entity)
             if current_soc is None:
-                raise ValueError(f"Missing numeric state for {actual_soc_entity}")
+                state = self.hass.states.get(actual_soc_entity)
+                raw_state = state.state if state else None
+                message = (
+                    f"Battery SoC entity {actual_soc_entity} is unavailable or "
+                    f"not numeric: {raw_state!r}"
+                )
+                _LOGGER.warning(message)
+                return EnergyMonitorData(
+                    None,
+                    now,
+                    actual_soc_entity,
+                    resolution,
+                    message,
+                )
 
             solar_forecast = _solar_forecast_samples(
                 self.hass,
@@ -132,10 +146,7 @@ def _state_float(hass: HomeAssistant, entity_id: str) -> float | None:
     state = hass.states.get(entity_id)
     if state is None:
         return None
-    try:
-        return float(state.state)
-    except (TypeError, ValueError):
-        return None
+    return coerce_float(state.state)
 
 
 def _solar_forecast_samples(
@@ -166,7 +177,7 @@ def _solar_forecast_samples(
             or item.get("value")
         )
         when = _parse_datetime(when_raw)
-        energy = _coerce_float(value)
+        energy = coerce_float(value)
         if when is None or energy is None:
             continue
         samples.append(EnergySample(when, _normalise_energy(energy, resolution_minutes)))
@@ -196,7 +207,7 @@ async def _async_consumption_history(
         states = states_by_entity.get(entity_id, [])
         samples: list[EnergySample] = []
         for state in states:
-            value = _coerce_float(state.state)
+            value = coerce_float(state.state)
             if value is None:
                 continue
             samples.append(
@@ -219,13 +230,6 @@ def _parse_datetime(value: Any) -> datetime | None:
     if parsed is None:
         return None
     return parsed if parsed.tzinfo else dt_util.as_local(parsed)
-
-
-def _coerce_float(value: Any) -> float | None:
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
 
 
 def _normalise_energy(value: float, resolution_minutes: int) -> float:
