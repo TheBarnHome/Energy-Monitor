@@ -80,8 +80,10 @@ class EnergyMonitorConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_supported_subentry_types(
         cls,
         config_entry: config_entries.ConfigEntry,
-    ) -> dict[str, type[config_entries.ConfigSubentryFlow]]:
+    ) -> dict[str, type[Any]]:
         """Return subentries supported by this integration."""
+        if not hasattr(config_entries, "ConfigSubentryFlow"):
+            return {}
         return {SUBENTRY_TYPE_LOAD: LoadSubentryFlowHandler}
 
 
@@ -111,7 +113,7 @@ class EnergyMonitorOptionsFlow(config_entries.OptionsFlow):
         )
 
 
-class LoadSubentryFlowHandler(config_entries.ConfigSubentryFlow):
+class LoadSubentryFlowHandler(getattr(config_entries, "ConfigSubentryFlow", object)):
     """Handle load subentries."""
 
     async def async_step_user(
@@ -215,42 +217,35 @@ def _config_schema() -> vol.Schema:
 
 def _load_subentry_schema(defaults: dict[str, Any] | None = None) -> vol.Schema:
     defaults = defaults or {}
-    return vol.Schema(
-        {
-            vol.Required(
-                CONF_LOAD_NAME,
-                default=defaults.get(CONF_LOAD_NAME, ""),
-            ): str,
-            vol.Optional(
-                CONF_LOAD_ID,
-                default=defaults.get(CONF_LOAD_ID, ""),
-            ): str,
-            vol.Required(
-                CONF_LOAD_PRIORITY,
-                default=defaults.get(CONF_LOAD_PRIORITY, 1),
-            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
-            vol.Required(
-                CONF_LOAD_DURATION_MINUTES,
-                default=defaults.get(CONF_LOAD_DURATION_MINUTES, 60),
-            ): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
-            vol.Optional(
-                CONF_LOAD_POWER_KW,
-                default=defaults.get(CONF_LOAD_POWER_KW, ""),
-            ): vol.Any("", vol.Coerce(float)),
-            vol.Optional(
-                CONF_LOAD_ENERGY_KWH,
-                default=defaults.get(CONF_LOAD_ENERGY_KWH, ""),
-            ): vol.Any("", vol.Coerce(float)),
-            vol.Optional(
-                CONF_LOAD_EARLIEST_START,
-                default=defaults.get(CONF_LOAD_EARLIEST_START, ""),
-            ): str,
-            vol.Optional(
-                CONF_LOAD_LATEST_END,
-                default=defaults.get(CONF_LOAD_LATEST_END, ""),
-            ): str,
-        }
-    )
+    schema: dict[Any, Any] = {
+        vol.Required(
+            CONF_LOAD_NAME,
+            default=defaults.get(CONF_LOAD_NAME, ""),
+        ): str,
+        vol.Optional(
+            CONF_LOAD_ID,
+            default=defaults.get(CONF_LOAD_ID, ""),
+        ): str,
+        vol.Required(
+            CONF_LOAD_PRIORITY,
+            default=defaults.get(CONF_LOAD_PRIORITY, 1),
+        ): vol.All(vol.Coerce(int), vol.Range(min=1, max=100)),
+        vol.Required(
+            CONF_LOAD_DURATION_MINUTES,
+            default=defaults.get(CONF_LOAD_DURATION_MINUTES, 60),
+        ): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
+        vol.Optional(
+            CONF_LOAD_EARLIEST_START,
+            default=defaults.get(CONF_LOAD_EARLIEST_START, ""),
+        ): str,
+        vol.Optional(
+            CONF_LOAD_LATEST_END,
+            default=defaults.get(CONF_LOAD_LATEST_END, ""),
+        ): str,
+    }
+    _add_optional_float(schema, CONF_LOAD_POWER_KW, defaults)
+    _add_optional_float(schema, CONF_LOAD_ENERGY_KWH, defaults)
+    return vol.Schema(schema)
 
 
 def _options_schema(options: config_entries.ConfigEntryOptions) -> vol.Schema:
@@ -269,3 +264,10 @@ def _options_schema(options: config_entries.ConfigEntryOptions) -> vol.Schema:
 def _slugify(value: str) -> str:
     slug = value.lower().strip().replace(" ", "_").replace("-", "_")
     return "".join(character for character in slug if character.isalnum() or character == "_")
+
+
+def _add_optional_float(schema: dict[Any, Any], key: str, defaults: dict[str, Any]) -> None:
+    if key in defaults and defaults[key] not in (None, ""):
+        schema[vol.Optional(key, default=defaults[key])] = vol.Coerce(float)
+    else:
+        schema[vol.Optional(key)] = vol.Coerce(float)

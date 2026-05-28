@@ -10,6 +10,8 @@ chargers, spa heating, or appliances.
 
 ### HACS
 
+Requires Home Assistant 2025.3 or newer for the programmable load UI.
+
 1. In HACS, open the menu and choose **Custom repositories**.
 2. Add `https://github.com/TheBarnHome/Energy-Monitor` as repository type
    **Integration**.
