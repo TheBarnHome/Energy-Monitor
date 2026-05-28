@@ -15,5 +15,43 @@
         }
       }
     }
+  },
+  "config_subentries": {
+    "load": {
+      "title": "Charge programmable",
+      "step": {
+        "user": {
+          "title": "Ajouter une charge",
+          "description": "Configure une charge flexible a integrer aux recommandations.",
+          "data": {
+            "name": "Nom",
+            "id": "ID",
+            "priority": "Priorite",
+            "duration_minutes": "Duree (minutes)",
+            "power_kw": "Puissance (kW)",
+            "energy_kwh": "Energie necessaire (kWh)",
+            "earliest_start": "Debut au plus tot (HH:MM)",
+            "latest_end": "Fin au plus tard (HH:MM)"
+          }
+        },
+        "reconfigure": {
+          "title": "Modifier la charge",
+          "description": "Modifie cette charge flexible.",
+          "data": {
+            "name": "Nom",
+            "id": "ID",
+            "priority": "Priorite",
+            "duration_minutes": "Duree (minutes)",
+            "power_kw": "Puissance (kW)",
+            "energy_kwh": "Energie necessaire (kWh)",
+            "earliest_start": "Debut au plus tot (HH:MM)",
+            "latest_end": "Fin au plus tard (HH:MM)"
+          }
+        }
+      },
+      "error": {
+        "missing_energy": "Renseigne soit la puissance, soit l'energie."
+      }
+    }
   }
 }

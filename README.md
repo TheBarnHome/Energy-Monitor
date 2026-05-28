@@ -32,6 +32,7 @@ from **Settings > Devices & services**.
 - Optional grid export support. If export is unavailable or disabled, surplus
   solar that cannot be stored is treated as clipped.
 - Configurable flexible loads via integration options.
+- Flexible loads can be added as Home Assistant config subentries from the UI.
 - Recommendation calendar for viable load windows.
 - `energy_monitor.recalculate` service to force a refresh.
 
@@ -72,7 +73,19 @@ The configured solar forecast entity should expose a list attribute named one of
 
 ## Flexible loads
 
-Loads are configured from the integration options as JSON:
+Preferred setup: open the Energy Monitor integration in **Settings > Devices &
+services**, use the entry menu, and choose the subentry action to add a
+programmable load. Each load gets its own recommendation sensor.
+
+Configure:
+
+- Name and optional stable ID.
+- Priority, where `1` is evaluated first.
+- Duration in minutes.
+- Either power in kW or total energy in kWh.
+- Optional earliest start and latest end in `HH:MM` format.
+
+The legacy JSON options format is still supported as a fallback:
 
 ```json
 [

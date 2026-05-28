@@ -14,6 +14,11 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import EnergyMonitorCoordinator
+from .loads import (
+    load_profiles_from_json,
+    load_profiles_from_subentries,
+    merge_load_profiles,
+)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -69,6 +74,14 @@ async def async_setup_entry(
         EnergyMonitorSensor(coordinator, entry.entry_id, description)
         for description in descriptions
     )
+    loads = merge_load_profiles(
+        load_profiles_from_subentries(entry),
+        load_profiles_from_json(entry.options.get("loads", "[]")),
+    )
+    async_add_entities(
+        EnergyMonitorLoadSensor(coordinator, entry.entry_id, load.load_id, load.name)
+        for load in loads
+    )
 
 
 class EnergyMonitorSensor(CoordinatorEntity[EnergyMonitorCoordinator], SensorEntity):
@@ -106,6 +119,46 @@ class EnergyMonitorSensor(CoordinatorEntity[EnergyMonitorCoordinator], SensorEnt
         if self.entity_description.attrs_fn:
             attrs.update(self.entity_description.attrs_fn(data))
         return attrs
+
+
+class EnergyMonitorLoadSensor(CoordinatorEntity[EnergyMonitorCoordinator], SensorEntity):
+    """Sensor exposing the recommendation for one configured load."""
+
+    def __init__(
+        self,
+        coordinator: EnergyMonitorCoordinator,
+        entry_id: str,
+        load_id: str,
+        name: str,
+    ) -> None:
+        super().__init__(coordinator)
+        self._load_id = load_id
+        self._attr_unique_id = f"{entry_id}_load_{load_id}"
+        self._attr_name = f"Energy Monitor {name}"
+        self._attr_has_entity_name = True
+
+    @property
+    def native_value(self) -> str | None:
+        """Return the recommendation state for this load."""
+        recommendation = self._recommendation()
+        return recommendation.state if recommendation else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return load recommendation attributes."""
+        recommendation = self._recommendation()
+        if not recommendation:
+            return {}
+        return recommendation.as_dict()
+
+    def _recommendation(self):
+        data = self.coordinator.data
+        if not data or not data.result:
+            return None
+        for recommendation in data.result.recommendations:
+            if recommendation.load_id == self._load_id:
+                return recommendation
+        return None
 
 
 def _battery_forecast_state(data) -> float | None:

@@ -25,4 +25,15 @@ CONF_BATTERY_RESERVE_PERCENT = "battery_reserve_percent"
 CONF_ROUNDTRIP_EFFICIENCY = "roundtrip_efficiency"
 CONF_LOADS = "loads"
 
+SUBENTRY_TYPE_LOAD = "load"
+
+CONF_LOAD_ID = "id"
+CONF_LOAD_NAME = "name"
+CONF_LOAD_PRIORITY = "priority"
+CONF_LOAD_DURATION_MINUTES = "duration_minutes"
+CONF_LOAD_POWER_KW = "power_kw"
+CONF_LOAD_ENERGY_KWH = "energy_kwh"
+CONF_LOAD_EARLIEST_START = "earliest_start"
+CONF_LOAD_LATEST_END = "latest_end"
+
 SERVICE_RECALCULATE = "recalculate"

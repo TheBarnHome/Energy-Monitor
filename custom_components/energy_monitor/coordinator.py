@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-import json
 import logging
 from typing import Any
 
@@ -37,6 +36,11 @@ from .forecast import (
     LoadProfile,
     build_baseload_profile,
     simulate_forecast,
+)
+from .loads import (
+    load_profiles_from_json,
+    load_profiles_from_subentries,
+    merge_load_profiles,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -106,7 +110,10 @@ class EnergyMonitorCoordinator(DataUpdateCoordinator[EnergyMonitorData]):
                 ),
                 export_enabled=bool(data.get(CONF_ENABLE_GRID_EXPORT, False)),
             )
-            loads = _load_profiles(options.get(CONF_LOADS, "[]"))
+            loads = merge_load_profiles(
+                load_profiles_from_subentries(self.entry),
+                load_profiles_from_json(options.get(CONF_LOADS, "[]")),
+            )
             result = simulate_forecast(
                 now=now,
                 current_soc_percent=current_soc,
@@ -203,34 +210,6 @@ async def _async_consumption_history(
     return await hass.async_add_executor_job(_fetch)
 
 
-def _load_profiles(raw_json: str) -> list[LoadProfile]:
-    try:
-        raw = json.loads(raw_json or "[]")
-    except json.JSONDecodeError:
-        return []
-    if not isinstance(raw, list):
-        return []
-
-    loads: list[LoadProfile] = []
-    for index, item in enumerate(raw):
-        if not isinstance(item, dict):
-            continue
-        name = str(item.get("name") or f"Load {index + 1}")
-        loads.append(
-            LoadProfile(
-                name=name,
-                load_id=str(item.get("id") or name.lower().replace(" ", "_")),
-                priority=int(item.get("priority", index + 1)),
-                duration_minutes=int(item.get("duration_minutes", 0)),
-                power_kw=_optional_float(item.get("power_kw")),
-                energy_kwh=_optional_float(item.get("energy_kwh")),
-                earliest_start=_parse_time(item.get("earliest_start")),
-                latest_end=_parse_time(item.get("latest_end")),
-            )
-        )
-    return loads
-
-
 def _parse_datetime(value: Any) -> datetime | None:
     if isinstance(value, datetime):
         return value
@@ -242,26 +221,11 @@ def _parse_datetime(value: Any) -> datetime | None:
     return parsed if parsed.tzinfo else dt_util.as_local(parsed)
 
 
-def _parse_time(value: Any):
-    if not isinstance(value, str):
-        return None
-    try:
-        return datetime.strptime(value, "%H:%M").time()
-    except ValueError:
-        return None
-
-
 def _coerce_float(value: Any) -> float | None:
     try:
         return float(value)
     except (TypeError, ValueError):
         return None
-
-
-def _optional_float(value: Any) -> float | None:
-    if value in (None, ""):
-        return None
-    return _coerce_float(value)
 
 
 def _normalise_energy(value: float, resolution_minutes: int) -> float:

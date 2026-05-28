@@ -15,5 +15,43 @@
         }
       }
     }
+  },
+  "config_subentries": {
+    "load": {
+      "title": "Programmable load",
+      "step": {
+        "user": {
+          "title": "Add load",
+          "description": "Configure a flexible load to include in recommendations.",
+          "data": {
+            "name": "Name",
+            "id": "ID",
+            "priority": "Priority",
+            "duration_minutes": "Duration (minutes)",
+            "power_kw": "Power (kW)",
+            "energy_kwh": "Energy needed (kWh)",
+            "earliest_start": "Earliest start (HH:MM)",
+            "latest_end": "Latest end (HH:MM)"
+          }
+        },
+        "reconfigure": {
+          "title": "Update load",
+          "description": "Update this flexible load.",
+          "data": {
+            "name": "Name",
+            "id": "ID",
+            "priority": "Priority",
+            "duration_minutes": "Duration (minutes)",
+            "power_kw": "Power (kW)",
+            "energy_kwh": "Energy needed (kWh)",
+            "earliest_start": "Earliest start (HH:MM)",
+            "latest_end": "Latest end (HH:MM)"
+          }
+        }
+      },
+      "error": {
+        "missing_energy": "Provide either power or energy."
+      }
+    }
   }
 }
