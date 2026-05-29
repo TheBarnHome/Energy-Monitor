@@ -44,6 +44,7 @@ from .loads import (
 )
 from .parsing import coerce_float
 from .parsing import is_energy_unit, normalise_slot_energy
+from .solar import solar_forecast_raw, solar_forecast_values
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,6 +56,8 @@ class EnergyMonitorData:
     result: ForecastResult | None
     generated_at: datetime
     actual_soc_entity: str
+    solar_forecast_entity: str
+    home_consumption_entity: str
     resolution_minutes: int
     history_samples: int = 0
     solar_forecast_samples: int = 0
@@ -80,6 +83,8 @@ class EnergyMonitorCoordinator(DataUpdateCoordinator[EnergyMonitorData]):
         now = dt_util.now()
         resolution = int(data.get(CONF_RESOLUTION_MINUTES, DEFAULT_RESOLUTION_MINUTES))
         actual_soc_entity = data[CONF_BATTERY_SOC_ENTITY]
+        solar_forecast_entity = data[CONF_SOLAR_FORECAST_ENTITY]
+        home_consumption_entity = data[CONF_HOME_CONSUMPTION_ENTITY]
 
         try:
             current_soc = _state_float(self.hass, actual_soc_entity)
@@ -95,18 +100,20 @@ class EnergyMonitorCoordinator(DataUpdateCoordinator[EnergyMonitorData]):
                     None,
                     now,
                     actual_soc_entity,
+                    solar_forecast_entity,
+                    home_consumption_entity,
                     resolution,
                     error=message,
                 )
 
             solar_forecast = _solar_forecast_samples(
                 self.hass,
-                data[CONF_SOLAR_FORECAST_ENTITY],
+                solar_forecast_entity,
                 resolution,
             )
             history = await _async_consumption_history(
                 self.hass,
-                data[CONF_HOME_CONSUMPTION_ENTITY],
+                home_consumption_entity,
                 int(data.get(CONF_HISTORY_DAYS, DEFAULT_HISTORY_DAYS)),
                 resolution,
             )
@@ -149,6 +156,8 @@ class EnergyMonitorCoordinator(DataUpdateCoordinator[EnergyMonitorData]):
                 result,
                 now,
                 actual_soc_entity,
+                solar_forecast_entity,
+                home_consumption_entity,
                 resolution,
                 history_samples=len(history),
                 solar_forecast_samples=len(solar_forecast),
@@ -160,6 +169,8 @@ class EnergyMonitorCoordinator(DataUpdateCoordinator[EnergyMonitorData]):
                 None,
                 now,
                 actual_soc_entity,
+                solar_forecast_entity,
+                home_consumption_entity,
                 resolution,
                 error=str(err),
             )
@@ -181,29 +192,9 @@ def _solar_forecast_samples(
     if state is None:
         return []
 
-    raw = (
-        state.attributes.get("forecast")
-        or state.attributes.get("forecasts")
-        or state.attributes.get("data")
-        or []
-    )
+    raw, default_unit = solar_forecast_raw(state.attributes)
     samples: list[EnergySample] = []
-    for item in raw:
-        if not isinstance(item, dict):
-            continue
-        when_raw = item.get("datetime") or item.get("start") or item.get("period_start")
-        value = (
-            item.get("solar_forecast_kwh")
-            or item.get("energy_kwh")
-            or item.get("pv_estimate")
-            or item.get("estimate")
-            or item.get("value")
-        )
-        unit = (
-            item.get("unit_of_measurement")
-            or item.get("unit")
-            or state.attributes.get("unit_of_measurement")
-        )
+    for when_raw, value, unit in solar_forecast_values(raw, default_unit):
         when = _parse_datetime(when_raw)
         energy = coerce_float(value)
         if when is None or energy is None:

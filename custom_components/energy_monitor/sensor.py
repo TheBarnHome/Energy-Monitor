@@ -172,6 +172,8 @@ def _battery_forecast_attrs(data) -> dict[str, Any]:
         return {
             "forecast": [],
             "actual_entity": data.actual_soc_entity,
+            "solar_forecast_entity": data.solar_forecast_entity,
+            "home_consumption_entity": data.home_consumption_entity,
             "generated_at": data.generated_at.isoformat(),
             "resolution_minutes": data.resolution_minutes,
             "history_samples": data.history_samples,
@@ -181,6 +183,8 @@ def _battery_forecast_attrs(data) -> dict[str, Any]:
     return {
         "forecast": [point.as_dict() for point in data.result.points],
         "actual_entity": data.actual_soc_entity,
+        "solar_forecast_entity": data.solar_forecast_entity,
+        "home_consumption_entity": data.home_consumption_entity,
         "generated_at": data.generated_at.isoformat(),
         "resolution_minutes": data.resolution_minutes,
         "history_samples": data.history_samples,
