@@ -174,12 +174,22 @@ def _battery_forecast_attrs(data) -> dict[str, Any]:
             "actual_entity": data.actual_soc_entity,
             "generated_at": data.generated_at.isoformat(),
             "resolution_minutes": data.resolution_minutes,
+            "history_samples": data.history_samples,
+            "solar_forecast_samples": data.solar_forecast_samples,
+            "baseload_average_kwh": data.baseload_average_kwh,
         }
     return {
         "forecast": [point.as_dict() for point in data.result.points],
         "actual_entity": data.actual_soc_entity,
         "generated_at": data.generated_at.isoformat(),
         "resolution_minutes": data.resolution_minutes,
+        "history_samples": data.history_samples,
+        "solar_forecast_samples": data.solar_forecast_samples,
+        "baseload_average_kwh": (
+            round(data.baseload_average_kwh, 3)
+            if data.baseload_average_kwh is not None
+            else None
+        ),
         "horizon_end": (
             data.result.points[-1].datetime.isoformat()
             if data.result.points

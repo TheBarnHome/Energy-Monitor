@@ -43,6 +43,7 @@ from .loads import (
     merge_load_profiles,
 )
 from .parsing import coerce_float
+from .parsing import is_energy_unit, normalise_slot_energy
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,6 +56,9 @@ class EnergyMonitorData:
     generated_at: datetime
     actual_soc_entity: str
     resolution_minutes: int
+    history_samples: int = 0
+    solar_forecast_samples: int = 0
+    baseload_average_kwh: float | None = None
     error: str | None = None
 
 
@@ -92,7 +96,7 @@ class EnergyMonitorCoordinator(DataUpdateCoordinator[EnergyMonitorData]):
                     now,
                     actual_soc_entity,
                     resolution,
-                    message,
+                    error=message,
                 )
 
             solar_forecast = _solar_forecast_samples(
@@ -107,6 +111,11 @@ class EnergyMonitorCoordinator(DataUpdateCoordinator[EnergyMonitorData]):
                 resolution,
             )
             baseload = build_baseload_profile(history, resolution)
+            baseload_average = (
+                sum(baseload.values()) / len(baseload)
+                if baseload
+                else None
+            )
             config = ForecastConfig(
                 resolution_minutes=resolution,
                 battery_capacity_kwh=float(data[CONF_BATTERY_CAPACITY_KWH]),
@@ -136,10 +145,24 @@ class EnergyMonitorCoordinator(DataUpdateCoordinator[EnergyMonitorData]):
                 config=config,
                 loads=loads,
             )
-            return EnergyMonitorData(result, now, actual_soc_entity, resolution)
+            return EnergyMonitorData(
+                result,
+                now,
+                actual_soc_entity,
+                resolution,
+                history_samples=len(history),
+                solar_forecast_samples=len(solar_forecast),
+                baseload_average_kwh=baseload_average,
+            )
         except Exception as err:  # pragma: no cover - logged for HA diagnostics
             _LOGGER.exception("Unable to update Energy Monitor forecast")
-            return EnergyMonitorData(None, now, actual_soc_entity, resolution, str(err))
+            return EnergyMonitorData(
+                None,
+                now,
+                actual_soc_entity,
+                resolution,
+                error=str(err),
+            )
 
 
 def _state_float(hass: HomeAssistant, entity_id: str) -> float | None:
@@ -176,11 +199,21 @@ def _solar_forecast_samples(
             or item.get("estimate")
             or item.get("value")
         )
+        unit = (
+            item.get("unit_of_measurement")
+            or item.get("unit")
+            or state.attributes.get("unit_of_measurement")
+        )
         when = _parse_datetime(when_raw)
         energy = coerce_float(value)
         if when is None or energy is None:
             continue
-        samples.append(EnergySample(when, _normalise_energy(energy, resolution_minutes)))
+        samples.append(
+            EnergySample(
+                when,
+                normalise_slot_energy(energy, resolution_minutes, unit),
+            )
+        )
     return samples
 
 
@@ -206,14 +239,31 @@ async def _async_consumption_history(
         )
         states = states_by_entity.get(entity_id, [])
         samples: list[EnergySample] = []
+        previous_value: float | None = None
         for state in states:
             value = coerce_float(state.state)
             if value is None:
                 continue
+            unit = state.attributes.get("unit_of_measurement")
+            if is_energy_unit(unit):
+                if previous_value is None:
+                    previous_value = value
+                    continue
+                delta = value - previous_value
+                previous_value = value
+                if delta < 0:
+                    continue
+                samples.append(
+                    EnergySample(
+                        state.last_updated,
+                        normalise_slot_energy(delta, resolution_minutes, unit),
+                    )
+                )
+                continue
             samples.append(
                 EnergySample(
                     state.last_updated,
-                    _normalise_energy(value, resolution_minutes),
+                    normalise_slot_energy(value, resolution_minutes, unit),
                 )
             )
         return samples
@@ -230,10 +280,3 @@ def _parse_datetime(value: Any) -> datetime | None:
     if parsed is None:
         return None
     return parsed if parsed.tzinfo else dt_util.as_local(parsed)
-
-
-def _normalise_energy(value: float, resolution_minutes: int) -> float:
-    """Accept kWh-like values and convert large W-like values to slot kWh."""
-    if abs(value) > 100:
-        return value / 1000 * resolution_minutes / 60
-    return value
